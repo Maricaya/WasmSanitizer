@@ -1,4 +1,4 @@
-# rust-wasm-instrumentation
+# instrumentation
 
 Compile: `cargo build --bin test`
 
