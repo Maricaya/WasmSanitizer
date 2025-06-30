@@ -5,23 +5,20 @@
 //use std::path::Path;
 use crate::shared::{find_func_by_name, get_param_n_idx, insert_postfix, insert_prefix};
 use rand::distributions::{Distribution, Uniform};
-use std::error::Error;
-use std::ffi::OsStr;
+
 use ordered_float::OrderedFloat;
-use ansi_term::Colour::{Red, Green, Yellow, Blue, Purple, Cyan};
-use wasm::highlevel::{Global, GlobalOp, Instr, LoadOp, LocalOp, Module, Function, NumericOp, 
+use ansi_term::Colour::{Red, Green, Yellow};
+use wasm::highlevel::{Global, GlobalOp, Instr, LoadOp, LocalOp, Module, Function, NumericOp,
     Local, ImportOrPresent, StoreOp};
 use wasm::{BlockType, FunctionType, Idx, Label, Memarg, Mutability, Val, ValType};
 
-const SIGNED_INTEGER_OVERFLOW_FUNCS_PATH: &str = 
-"/home/WORK/PAPER2/rust-wasm-instrumentation/funcs/signed_integer_overflow.wasm";
-const SIGNED_INTEGER_OVERFLOW_FUNCS_PATH_MUL: &str = 
-"/home/WORK/PAPER2/rust-wasm-instrumentation/funcs/mul_check.wasm";
-const SIGNED_INTEGER_OVERFLOW_FUNCS: [&str; 6] = 
+const SIGNED_INTEGER_OVERFLOW_FUNCS_PATH: &str = "funcs/signed_integer_overflow.wasm";
+const SIGNED_INTEGER_OVERFLOW_FUNCS_PATH_MUL: &str = "funcs/mul_check.wasm";
+const SIGNED_INTEGER_OVERFLOW_FUNCS: [&str; 6] =
 ["is_i32_sign_add_overflow","is_i64_sign_add_overflow",
 "is_i32_sign_sub_overflow","is_i64_sign_sub_overflow",
 "i32_is_mul_overflow","i64_is_mul_overflow"];
-const INI_FUNCS: [&str; 14] = 
+const INI_FUNCS: [&str; 14] =
 ["__wasm_call_ctors", "_start", "emscripten_stack_init", "emscripten_stack_get_free",
 "emscripten_stack_get_base", "emscripten_stack_get_end", "emscripten_stack_get_current",
 "__memcpy", "__memset", "__fwritex", "__stdio_write", "fmt_fp", "__ashlti3", "__addtf3"
@@ -55,7 +52,7 @@ fn copy_function(func_name: &str, target_module: &mut Module, source_path: &str)
        .expect("Function not found!")
        .clone().1;
        //log_info!("Get function: {}",func_name);
-        
+
         //let mut target_module =  Module::from_file(target_path).expect("Fail to load the target module!");
         let type_ = &function_to_move.type_;
         if let ImportOrPresent::Present(code) = &function_to_move.code{
@@ -73,7 +70,7 @@ fn copy_function(func_name: &str, target_module: &mut Module, source_path: &str)
             log_error!("Can not insert import function!");
             return Err(());
         }
-        
+
     }else if let Err(error) = s_module{
         log_error!("Fail to load the Module: {:?}", error);
         return Err(());
@@ -165,7 +162,7 @@ pub fn null_reference(input: &str, output: &str) {
                             continue;
                         }
                         match(&code.body[i-2], &code.body[i-1], &code.body[i]){
-                            (Instr::Local(LocalOp::Get, idx1), 
+                            (Instr::Local(LocalOp::Get, idx1),
                             Instr::Local(LocalOp::Get, idx2),
                             Instr::Store(..)) => {
                                 // 在store指令后插入检查local是否为0的指令
@@ -176,9 +173,9 @@ pub fn null_reference(input: &str, output: &str) {
                                 new_instrs.push(Instr::Local(LocalOp::Set, new_local1));
                                 new_instrs.push(Instr::Block(BlockType(None)));
                                     new_instrs.push(Instr::Local(LocalOp::Get, new_local1));
-                                    new_instrs.push(Instr::BrIf(Label(0))); // 没有溢出，跳出 
+                                    new_instrs.push(Instr::BrIf(Label(0))); // 没有溢出，跳出
                                     //new_instrs.push(Instr::Const(Val::I32(11))); // return 11
-                                    //new_instrs.push(Instr::Call(proc_exit_idx));                                
+                                    //new_instrs.push(Instr::Call(proc_exit_idx));
                                     new_instrs.push(Instr::Unreachable);
                                 new_instrs.push(Instr::End);
                                 //log_info!("null_reference instrumentation in {}",&func_name);
@@ -251,12 +248,12 @@ pub fn implicit_signed_integer_truncation(input: &str, output: &str) {
                                 //new_instrs.push(Instr::Numeric(NumericOp::I64Eqz));
                                 new_instrs.push(Instr::BrIf(Label(0))); // 如果相等，跳出
                                 //new_instrs.push(Instr::Const(Val::I32(12))); // return 12
-                                //new_instrs.push(Instr::Call(proc_exit_idx)); 
+                                //new_instrs.push(Instr::Call(proc_exit_idx));
                                 new_instrs.push(Instr::Unreachable); // 停止代码执行
                                 new_instrs.push(Instr::End);
                             }
                         }
-                        
+
                         i += 1;
                     }
                     code.body = new_instrs;
@@ -315,12 +312,12 @@ pub fn implicit_unsigned_integer_truncation(input: &str, output: &str) {
                                 //new_instrs.push(Instr::Numeric(NumericOp::I64Eqz));
                                 new_instrs.push(Instr::BrIf(Label(0))); // 如果相等，跳出
                                 //new_instrs.push(Instr::Const(Val::I32(13))); // return 13
-                                //new_instrs.push(Instr::Call(proc_exit_idx)); 
+                                //new_instrs.push(Instr::Call(proc_exit_idx));
                                 new_instrs.push(Instr::Unreachable); // 停止代码执行
                                 new_instrs.push(Instr::End);
                             }
                         }
-                        
+
                         i += 1;
                     }
                     code.body = new_instrs;
@@ -372,8 +369,8 @@ pub fn float_cast_overflow(input: &str, output: &str) {
                         }
     // -------------------------------------f32.demote_f64, double2float----------------------------------------------
                         match(&code.body[i-2], &code.body[i-1], &code.body[i]){
-                            (Instr::Local(LocalOp::Get, idx1), 
-                            Instr::Numeric(NumericOp::F32DemoteF64), 
+                            (Instr::Local(LocalOp::Get, idx1),
+                            Instr::Numeric(NumericOp::F32DemoteF64),
                             Instr::Local(LocalOp::Set, idx2)) => {
                                 let new_local1 = add_fresh_local(&mut code.locals, func_param_count, ValType::I32);
                                 new_instrs.push(Instr::Local(LocalOp::Get, *idx2));
@@ -433,7 +430,7 @@ pub fn float_cast_overflow(input: &str, output: &str) {
 }
 
 
- 
+
 
 pub fn non_return(input: &str, output: &str) {
     let result = Module::from_file(input);
@@ -623,7 +620,7 @@ pub fn implicit_integer_sign_change(input: &str, output: &str) {
             ],
         );
             log_info!("Implicit_integer_sign_change:dlmalloc instrumented.")
-        } 
+        }
         if let Some((_, malloc)) = find_func_by_name("__memcpy", module.functions_mut()){ // 2:for functions
             let malloc_p2 = get_param_n_idx(malloc, 2);
             insert_prefix(
@@ -641,7 +638,7 @@ pub fn implicit_integer_sign_change(input: &str, output: &str) {
             ],
         );
             log_info!("Implicit_integer_sign_change:__memcpy instrumented.")
-        } 
+        }
         if let Some((_, malloc)) = find_func_by_name("memmove", module.functions_mut()){ // 2:for functions
             let malloc_p2 = get_param_n_idx(malloc, 2);
             insert_prefix(
@@ -659,7 +656,7 @@ pub fn implicit_integer_sign_change(input: &str, output: &str) {
             ],
         );
             log_info!("Implicit_integer_sign_change:memmove instrumented.")
-        } 
+        }
         if let Some((_, malloc)) = find_func_by_name("strncpy", module.functions_mut()){ // 2:for functions
             let malloc_p2 = get_param_n_idx(malloc, 2);
             insert_prefix(
@@ -677,7 +674,7 @@ pub fn implicit_integer_sign_change(input: &str, output: &str) {
             ],
         );
             log_info!("Implicit_integer_sign_change:strncpy instrumented.")
-        } 
+        }
         let _ = module.to_file(output).expect("Fail to encode the Wasm Module!");
     } else if let Err(error) = result {
         log_error!("Fail to load the Module: {:?}", error);
@@ -740,7 +737,7 @@ pub fn shift(input: &str, output: &str) {
                                         new_instrs.push(Instr::Br(Label(1)));
                                     new_instrs.push(Instr::End);
                                     //new_instrs.push(Instr::Const(Val::I32(17))); // return 17
-                                    //new_instrs.push(Instr::Call(proc_exit_idx)); 
+                                    //new_instrs.push(Instr::Call(proc_exit_idx));
                                     new_instrs.push(Instr::Unreachable); // 停止代码执行
                                 new_instrs.push(Instr::End);
                                 log_info!("Shift(i32) check in func({})",Yellow.paint(cur_func_name));
@@ -767,7 +764,7 @@ pub fn shift(input: &str, output: &str) {
                                         new_instrs.push(Instr::Br(Label(1)));
                                     new_instrs.push(Instr::End);
                                     //new_instrs.push(Instr::Const(Val::I32(17))); // return 17
-                                    //new_instrs.push(Instr::Call(proc_exit_idx)); 
+                                    //new_instrs.push(Instr::Call(proc_exit_idx));
                                     new_instrs.push(Instr::Unreachable); // 停止代码执行
                                 new_instrs.push(Instr::End);
                                 log_info!("Shift(i64) check in func({})",Yellow.paint(cur_func_name));
@@ -839,7 +836,7 @@ pub fn unsigned_integer_overflow(input: &str, output: &str) {
                                     new_instrs.push(Instr::Numeric(NumericOp::I32GeU)); // 若sum >= x, 则直接跳出
                                     new_instrs.push(Instr::BrIf(Label(0)));
                                     //new_instrs.push(Instr::Const(Val::I32(18))); // return 18
-                                    //new_instrs.push(Instr::Call(proc_exit_idx)); 
+                                    //new_instrs.push(Instr::Call(proc_exit_idx));
                                     new_instrs.push(Instr::Unreachable);
                                 new_instrs.push(Instr::End);
                             },
@@ -854,7 +851,7 @@ pub fn unsigned_integer_overflow(input: &str, output: &str) {
                                     new_instrs.push(Instr::Numeric(NumericOp::I64GeU)); // 若sum >= x, 则直接跳出
                                     new_instrs.push(Instr::BrIf(Label(0)));
                                     //new_instrs.push(Instr::Const(Val::I32(18))); // return 18
-                                    //new_instrs.push(Instr::Call(proc_exit_idx)); 
+                                    //new_instrs.push(Instr::Call(proc_exit_idx));
                                     new_instrs.push(Instr::Unreachable);
                                 new_instrs.push(Instr::End);
                             },
@@ -868,7 +865,7 @@ pub fn unsigned_integer_overflow(input: &str, output: &str) {
                                     new_instrs.push(Instr::Numeric(NumericOp::I32GeU)); // 若 b >= a, 则直接跳出
                                     new_instrs.push(Instr::BrIf(Label(0)));
                                     //new_instrs.push(Instr::Const(Val::I32(18))); // return 18
-                                    //new_instrs.push(Instr::Call(proc_exit_idx)); 
+                                    //new_instrs.push(Instr::Call(proc_exit_idx));
                                     new_instrs.push(Instr::Unreachable);
                                 new_instrs.push(Instr::End); */
                             },
@@ -882,7 +879,7 @@ pub fn unsigned_integer_overflow(input: &str, output: &str) {
                                     new_instrs.push(Instr::Numeric(NumericOp::I64GeU)); // 若 b >= a, 则直接跳出
                                     new_instrs.push(Instr::BrIf(Label(0)));
                                     //new_instrs.push(Instr::Const(Val::I32(18))); // return 18
-                                    //new_instrs.push(Instr::Call(proc_exit_idx)); 
+                                    //new_instrs.push(Instr::Call(proc_exit_idx));
                                     new_instrs.push(Instr::Unreachable);
                                 new_instrs.push(Instr::End);
                             },
@@ -894,15 +891,15 @@ pub fn unsigned_integer_overflow(input: &str, output: &str) {
                                 new_instrs.push(Instr::Block(BlockType(None)));
                                     new_instrs.push(Instr::Local(LocalOp::Get, *idx1)); // b
                                     new_instrs.push(Instr::Numeric(NumericOp::I64ExtendI32U)); // 扩展为无符号64位整数
-                                    new_instrs.push(Instr::Local(LocalOp::Get, *idx2)); // a 
+                                    new_instrs.push(Instr::Local(LocalOp::Get, *idx2)); // a
                                     new_instrs.push(Instr::Numeric(NumericOp::I64ExtendI32U)); // 扩展为无符号64位整数
                                     new_instrs.push(Instr::Numeric(NumericOp::I64Mul));
-                                    new_instrs.push(Instr::Local(LocalOp::Get, *idx3)); 
+                                    new_instrs.push(Instr::Local(LocalOp::Get, *idx3));
                                     new_instrs.push(Instr::Numeric(NumericOp::I64ExtendI32U)); // 扩展为无符号64位整数
                                     new_instrs.push(Instr::Numeric(NumericOp::I64Eq));
                                     new_instrs.push(Instr::BrIf(Label(0)));
                                     //new_instrs.push(Instr::Const(Val::I32(18))); // return 18
-                                    //new_instrs.push(Instr::Call(proc_exit_idx)); 
+                                    //new_instrs.push(Instr::Call(proc_exit_idx));
                                     new_instrs.push(Instr::Unreachable);
                                 new_instrs.push(Instr::End);
                             },
@@ -996,9 +993,9 @@ pub fn signed_integer_overflow(input: &str, output: &str) {
                         Instr::Local(LocalOp::Get,idx2),
                         Instr::Numeric(NumericOp::I32Add),
                         Instr::Local(LocalOp::Set,_idx3)) => { // I32Add
-                            if !i32_add_flag { 
+                            if !i32_add_flag {
                                 i32_add_flag = true;
-                            } 
+                            }
                             log_info!("Call function({}) in func({})"
                                 ,Yellow.paint("is_i32_sign_add_overflow")
                                 ,Yellow.paint(cur_func_name));
@@ -1017,9 +1014,9 @@ pub fn signed_integer_overflow(input: &str, output: &str) {
                         Instr::Local(LocalOp::Get,idx2),
                         Instr::Numeric(NumericOp::I64Add),
                         Instr::Local(LocalOp::Set,_idx3)) => { // I64Add
-                            if !i32_add_flag { 
+                            if !i32_add_flag {
                                 i64_add_flag = true;
-                            } 
+                            }
                             log_info!("Call function({}) in func({})"
                                 ,Yellow.paint("is_i64_sign_add_overflow")
                                 ,Yellow.paint(cur_func_name));
@@ -1038,9 +1035,9 @@ pub fn signed_integer_overflow(input: &str, output: &str) {
                         Instr::Local(LocalOp::Get,idx2),
                         Instr::Numeric(NumericOp::I32Sub),
                         Instr::Local(LocalOp::Set,_idx3)) => { // I32Sub
-                            if !i32_sub_flag { 
+                            if !i32_sub_flag {
                                 i32_sub_flag = true;
-                            } 
+                            }
                             log_info!("Call function({}) in func({})"
                                 ,Yellow.paint("is_i32_sign_sub_overflow")
                                 ,Yellow.paint(cur_func_name));
@@ -1059,9 +1056,9 @@ pub fn signed_integer_overflow(input: &str, output: &str) {
                         Instr::Local(LocalOp::Get,idx2),
                         Instr::Numeric(NumericOp::I64Sub),
                         Instr::Local(LocalOp::Set,_idx3)) => { // I64Sub
-                            if !i64_sub_flag { 
+                            if !i64_sub_flag {
                                 i64_sub_flag = true;
-                            } 
+                            }
                             log_info!("Call function({}) in func({})"
                                 ,Yellow.paint("is_i64_sign_sub_overflow")
                                 ,Yellow.paint(cur_func_name));
@@ -1136,7 +1133,7 @@ pub fn signed_integer_overflow(input: &str, output: &str) {
                         Instr::Local(LocalOp::Set,_7),
                         Instr::Local(LocalOp::Get,idx1),
                         Instr::Local(LocalOp::Get,idx2),
-                        Instr::Numeric(NumericOp::I32Mul), 
+                        Instr::Numeric(NumericOp::I32Mul),
                         Instr::Local(LocalOp::Set,idx3)) => { // char mul
                             if *num == 24 {
                                 log_info!("Char mul check in func({})"
@@ -1194,7 +1191,7 @@ pub fn signed_integer_overflow(input: &str, output: &str) {
                                     new_instrs.push(Instr::Unreachable);
                                 new_instrs.push(Instr::End);
                             }
-                            
+
                         },
                         _ => {},
                     }
@@ -1204,7 +1201,7 @@ pub fn signed_integer_overflow(input: &str, output: &str) {
                         continue;
                     }
                     match (&code.body[i],&code.body[i+1],&code.body[i+2],&code.body[i+3],&code.body[i+4]) {
-                        (Instr::Numeric(NumericOp::I32Add), 
+                        (Instr::Numeric(NumericOp::I32Add),
                         Instr::Local(LocalOp::Set,_1),
                         Instr::Local(LocalOp::Get,_2),
                         Instr::Local(LocalOp::Get,_3),
@@ -1235,7 +1232,7 @@ pub fn signed_integer_overflow(input: &str, output: &str) {
                                 new_instrs.push(Instr::Unreachable);
                             new_instrs.push(Instr::End);
                         },
-                        (Instr::Numeric(NumericOp::I32Add), 
+                        (Instr::Numeric(NumericOp::I32Add),
                         Instr::Local(LocalOp::Set,_1),
                         Instr::Local(LocalOp::Get,_2),
                         Instr::Local(LocalOp::Get,_3),
@@ -1267,7 +1264,7 @@ pub fn signed_integer_overflow(input: &str, output: &str) {
                             new_instrs.push(Instr::End);
                         },
                         _  => {},
-                    
+
                     }
 
                     /* if (i+ 4 >= code.body.len() || i < 2){
@@ -1280,11 +1277,11 @@ pub fn signed_integer_overflow(input: &str, output: &str) {
                         Instr::Local(LocalOp::Get,idx2), // a
                         Instr::Numeric(NumericOp::I32Shl), // I32Shl
                         Instr::Local(LocalOp::Set,_idx3),
-                        Instr::Local(LocalOp::Get,idx4), 
-                        Instr::Local(LocalOp::Get,idx5), 
+                        Instr::Local(LocalOp::Get,idx4),
+                        Instr::Local(LocalOp::Get,idx5),
                         Instr::Numeric(NumericOp::I32ShrS), // I32Shr_S
                         ) => {
-                            
+
                             log_info!("Call function({}) in func({})"
                                 ,Yellow.paint("i32_is_shift_overflow")
                                 ,Yellow.paint(cur_func_name));
@@ -1324,7 +1321,7 @@ pub fn signed_integer_overflow(input: &str, output: &str) {
                                 //new_instrs.push(Instr::Call(proc_exit_idx));
                                 new_instrs.push(Instr::Unreachable);
                             new_instrs.push(Instr::End);
-                        }, 
+                        },
                         _ => {},
                     } */
                     i += 1;
@@ -1353,7 +1350,7 @@ pub fn signed_integer_overflow(input: &str, output: &str) {
         log_info!("Remove function({}) from target module",Cyan.paint("is_i64_sign_sub_overflow"));
     } */
     let _ = module.to_file(output).expect("Fail to encode the Wasm Module!");
-    
+
 }
 
 pub fn float_divide_by_zero(input: &str, output: &str){
@@ -1389,11 +1386,11 @@ pub fn float_divide_by_zero(input: &str, output: &str){
                             i += 1;
                             continue;
                         }
-                        
+
                         match (&code.body[i-1],&code.body[i],&code.body[i+1]) {
                             (Instr::Local(LocalOp::Get,_idx1),
                             Instr::Local(LocalOp::Get,idx2),
-                            Instr::Numeric(NumericOp::F32Div)) => { 
+                            Instr::Numeric(NumericOp::F32Div)) => {
                                 let new_local1 = add_fresh_local(&mut code.locals, func_param_count, ValType::I32);
                                 new_instrs.push(Instr::Const(Val::F32(OrderedFloat(0.0))));
                                 new_instrs.push(Instr::Local(LocalOp::Get, *idx2));
@@ -1820,7 +1817,7 @@ pub fn instrument_with_stack_canary_check(input: &str, output: &str) {
         m.functions_mut().for_each(|(_, f)| {
             if requires_canary_check(f, &stack_ptr_idx) {
                 let canary_value = distribution.sample(&mut rng);
-            
+
                 if f.code().is_some() {
                     returns_to_outer_block_jmp(f);
 
